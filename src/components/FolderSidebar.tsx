@@ -38,6 +38,7 @@ export function FolderSidebar({
   const [newName, setNewName] = useState("");
   const [editingId, setEditingId] = useState<Id<"folders"> | null>(null);
   const [editName, setEditName] = useState("");
+  const [confirmDeleteId, setConfirmDeleteId] = useState<Id<"folders"> | null>(null);
 
   async function handleCreate() {
     if (!newName.trim()) return;
@@ -64,7 +65,7 @@ export function FolderSidebar({
     <div className="w-[220px] border-r border-border bg-card shrink-0 flex flex-col">
       <div className="p-3 space-y-1">
         <button
-          onClick={() => onSelect({ type: "all" })}
+          onClick={() => { onSelect({ type: "all" }); setConfirmDeleteId(null); }}
           className={cn(
             "w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors",
             active.type === "all"
@@ -76,7 +77,7 @@ export function FolderSidebar({
           All Sessions
         </button>
         <button
-          onClick={() => onSelect({ type: "archived" })}
+          onClick={() => { onSelect({ type: "archived" }); setConfirmDeleteId(null); }}
           className={cn(
             "w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors",
             active.type === "archived"
@@ -149,9 +150,10 @@ export function FolderSidebar({
           ) : (
             <div key={folder._id} className="group flex items-center">
               <button
-                onClick={() =>
-                  onSelect({ type: "folder", folderId: folder._id })
-                }
+                onClick={() => {
+                  onSelect({ type: "folder", folderId: folder._id });
+                  setConfirmDeleteId(null);
+                }}
                 className={cn(
                   "flex-1 flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors text-left",
                   active.type === "folder" && active.folderId === folder._id
@@ -167,17 +169,30 @@ export function FolderSidebar({
                   onClick={() => {
                     setEditingId(folder._id);
                     setEditName(folder.name);
+                    setConfirmDeleteId(null);
                   }}
                   className="p-1 rounded hover:bg-muted"
                 >
                   <Pencil className="h-3 w-3 text-muted-foreground" />
                 </button>
-                <button
-                  onClick={() => handleDelete(folder._id)}
-                  className="p-1 rounded hover:bg-destructive/10"
-                >
-                  <Trash2 className="h-3 w-3 text-destructive" />
-                </button>
+                {confirmDeleteId === folder._id ? (
+                  <button
+                    onClick={() => {
+                      handleDelete(folder._id);
+                      setConfirmDeleteId(null);
+                    }}
+                    className="px-2 py-0.5 rounded text-xs font-medium bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  >
+                    Confirm?
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => setConfirmDeleteId(folder._id)}
+                    className="p-1 rounded hover:bg-destructive/10"
+                  >
+                    <Trash2 className="h-3 w-3 text-destructive" />
+                  </button>
+                )}
               </div>
             </div>
           )

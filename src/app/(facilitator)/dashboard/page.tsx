@@ -45,8 +45,15 @@ export default function DashboardPage() {
     if (folderFilter.type === "folder") {
       return { folderId: folderFilter.folderId, includeArchived: true };
     }
+    // folderFilter "all" — delegate to status tab
+    if (statusTab === "archived") {
+      return { status: "archived" as const, includeArchived: true };
+    }
+    if (statusTab === "active" || statusTab === "completed") {
+      return { status: statusTab as "active" | "completed" };
+    }
     return {};
-  }, [folderFilter]);
+  }, [folderFilter, statusTab]);
 
   const sessions = useQuery(api.sessions.list, listArgs);
 

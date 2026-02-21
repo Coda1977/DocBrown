@@ -177,6 +177,7 @@ export function DotVotingMobile({
                         className="w-8 h-8 rounded-full bg-white/60 flex items-center justify-center"
                         onClick={() => adjust(postIt._id, -1)}
                         disabled={pts === 0}
+                        aria-label={`Remove point from ${postIt.text}`}
                       >
                         <Minus className="h-3 w-3" />
                       </button>
@@ -187,6 +188,7 @@ export function DotVotingMobile({
                         className="w-8 h-8 rounded-full bg-white/60 flex items-center justify-center"
                         onClick={() => adjust(postIt._id, 1)}
                         disabled={remaining <= 0}
+                        aria-label={`Add point to ${postIt.text}`}
                       >
                         <Plus className="h-3 w-3" />
                       </button>

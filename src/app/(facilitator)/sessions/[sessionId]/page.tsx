@@ -314,11 +314,13 @@ export default function SessionPage({
       {revertConfirm && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-card rounded-2xl p-6 max-w-sm w-full mx-4 space-y-4">
-            <h3 className="text-lg font-semibold">Go back to {revertConfirm}?</h3>
+            <h3 className="text-lg font-semibold">Go back to {revertConfirm.charAt(0).toUpperCase() + revertConfirm.slice(1)}?</h3>
             <p className="text-sm text-muted-foreground">
-              {revertConfirm === "collect" || revertConfirm === "organize"
-                ? "This will delete all votes and voting rounds."
-                : "This will reset voting progress."}
+              {revertConfirm === "collect"
+                ? "This will delete all votes and voting rounds, and reopen submissions."
+                : revertConfirm === "organize"
+                  ? "This will delete all votes and voting rounds."
+                  : "This will reset the current voting round's progress."}
             </p>
             <div className="flex gap-2 justify-end">
               <Button
