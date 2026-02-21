@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install:*)",
+      "Bash(npm run build:*)",
+      "Bash(npm run lint:*)",
+      "WebSearch",
+      "WebFetch(domain:docs.convex.dev)",
+      "Bash(npx vitest:*)",
+      "Bash(npm ls:*)",
+      "Bash(npm show:*)",
+      "Bash(npx playwright --version)",
+      "Bash(npx playwright install chromium)",
+      "Bash(npx convex:*)",
+      "Bash(npm run dev:*)",
+      "Bash(curl:*)",
+      "Bash(npx playwright test:*)",
+      "Bash(cd:*)"
+    ]
+  }
+}

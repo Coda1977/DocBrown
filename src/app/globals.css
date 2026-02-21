@@ -1,0 +1,140 @@
+@import "tailwindcss";
+
+/* ========== FigJam-style Design Tokens ========== */
+:root {
+  /* Core palette - warm, playful, approachable */
+  --yellow-50: #fefce8;
+  --yellow-100: #fef9c3;
+  --yellow-200: #fef08a;
+  --yellow-300: #fde047;
+  --yellow-400: #facc15;
+  --yellow-500: #eab308;
+
+  --coral-50: #fff1f0;
+  --coral-100: #ffe0de;
+  --coral-200: #ffc7c2;
+  --coral-300: #ffa399;
+  --coral-400: #ff7a6b;
+  --coral-500: #f95d4e;
+
+  --teal-50: #edfcf7;
+  --teal-100: #d2f7ea;
+  --teal-200: #a8eed8;
+  --teal-300: #6edec0;
+  --teal-400: #34c9a5;
+  --teal-500: #14a88a;
+
+  --purple-50: #f5f0ff;
+  --purple-100: #ede5ff;
+  --purple-200: #ddd0fe;
+  --purple-300: #c5adfd;
+  --purple-400: #a87ffb;
+  --purple-500: #8b5cf6;
+
+  --blue-50: #eff6ff;
+  --blue-100: #dbeafe;
+  --blue-200: #bfdbfe;
+  --blue-300: #93bbfd;
+  --blue-400: #60a5fa;
+  --blue-500: #3b82f6;
+
+  --pink-50: #fdf2f8;
+  --pink-100: #fce7f3;
+  --pink-200: #fbcfe8;
+  --pink-300: #f9a8d4;
+  --pink-400: #f472b6;
+
+  /* Post-it colors */
+  --postit-yellow: #fef9c3;
+  --postit-coral: #ffe0de;
+  --postit-teal: #d2f7ea;
+  --postit-purple: #ede5ff;
+  --postit-blue: #dbeafe;
+  --postit-pink: #fce7f3;
+
+  /* Semantic */
+  --background: #fafaf8;
+  --foreground: #1c1917;
+  --card: #ffffff;
+  --card-foreground: #1c1917;
+  --primary: #f95d4e;
+  --primary-foreground: #ffffff;
+  --secondary: #f5f0ff;
+  --secondary-foreground: #1c1917;
+  --muted: #f5f5f4;
+  --muted-foreground: #78716c;
+  --accent: #14a88a;
+  --accent-foreground: #ffffff;
+  --destructive: #ef4444;
+  --destructive-foreground: #ffffff;
+  --border: #e7e5e4;
+  --input: #e7e5e4;
+  --ring: #f95d4e;
+  --radius: 1rem;
+
+  /* Canvas */
+  --canvas-bg: #fafaf8;
+  --canvas-grid: #e7e5e4;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  /* Post-it palette */
+  --color-postit-yellow: var(--postit-yellow);
+  --color-postit-coral: var(--postit-coral);
+  --color-postit-teal: var(--postit-teal);
+  --color-postit-purple: var(--postit-purple);
+  --color-postit-blue: var(--postit-blue);
+  --color-postit-pink: var(--postit-pink);
+
+  --color-canvas-bg: var(--canvas-bg);
+
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+  --radius-sm: calc(var(--radius) - 0.5rem);
+  --radius-md: var(--radius);
+  --radius-lg: calc(var(--radius) + 0.25rem);
+  --radius-xl: calc(var(--radius) + 0.5rem);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans, system-ui, sans-serif);
+}
+
+/* Post-it shadow for that "real sticky note" feel */
+.postit-shadow {
+  box-shadow:
+    2px 3px 6px rgba(0, 0, 0, 0.08),
+    0 1px 3px rgba(0, 0, 0, 0.06);
+}
+
+.postit-shadow-hover {
+  box-shadow:
+    3px 5px 12px rgba(0, 0, 0, 0.12),
+    0 2px 4px rgba(0, 0, 0, 0.08);
+}
+
+/* Canvas dot grid pattern */
+.canvas-grid {
+  background-image: radial-gradient(circle, var(--canvas-grid) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
