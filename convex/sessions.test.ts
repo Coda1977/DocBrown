@@ -420,7 +420,7 @@ describe("sessions phase transitions", () => {
     });
 
     // Create a participant and submit votes
-    const participantId = await t.run(async (ctx) =>
+    await t.run(async (ctx) =>
       ctx.db.insert("participants", {
         sessionId,
         displayToken: "tok123",
@@ -435,7 +435,7 @@ describe("sessions phase transitions", () => {
     await t.mutation(api.votes.submitDotVotes, {
       roundId,
       sessionId,
-      participantId,
+      participantToken: "tok123",
       votes: [{ postItId, points: 3 }],
     });
 

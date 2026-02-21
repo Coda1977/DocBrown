@@ -14,6 +14,7 @@ import type * as coAdmins from "../coAdmins.js";
 import type * as folders from "../folders.js";
 import type * as http from "../http.js";
 import type * as lib_authSession from "../lib/authSession.js";
+import type * as lib_resolveParticipant from "../lib/resolveParticipant.js";
 import type * as lib_shortCode from "../lib/shortCode.js";
 import type * as participants from "../participants.js";
 import type * as postIts from "../postIts.js";
@@ -34,6 +35,7 @@ declare const fullApi: ApiFromModules<{
   folders: typeof folders;
   http: typeof http;
   "lib/authSession": typeof lib_authSession;
+  "lib/resolveParticipant": typeof lib_resolveParticipant;
   "lib/shortCode": typeof lib_shortCode;
   participants: typeof participants;
   postIts: typeof postIts;

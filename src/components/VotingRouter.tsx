@@ -10,11 +10,11 @@ import { CircleDot } from "lucide-react";
 
 export function VotingRouter({
   sessionId,
-  participantId,
+  participantToken,
   question,
 }: {
   sessionId: Id<"sessions">;
-  participantId: Id<"participants">;
+  participantToken: string;
   question: string;
 }) {
   const activeRound = useQuery(api.votingRounds.getActive, { sessionId });
@@ -41,7 +41,7 @@ export function VotingRouter({
       return (
         <DotVotingMobile
           sessionId={sessionId}
-          participantId={participantId}
+          participantToken={participantToken}
           question={question}
         />
       );
@@ -49,7 +49,7 @@ export function VotingRouter({
       return (
         <StockRankMobile
           sessionId={sessionId}
-          participantId={participantId}
+          participantToken={participantToken}
           question={question}
         />
       );
@@ -57,7 +57,7 @@ export function VotingRouter({
       return (
         <MatrixVotingMobile
           sessionId={sessionId}
-          participantId={participantId}
+          participantToken={participantToken}
           question={question}
         />
       );

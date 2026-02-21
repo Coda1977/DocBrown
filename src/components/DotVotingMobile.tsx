@@ -9,11 +9,11 @@ import { Minus, Plus, CircleDot } from "lucide-react";
 
 export function DotVotingMobile({
   sessionId,
-  participantId,
+  participantToken,
   question,
 }: {
   sessionId: Id<"sessions">;
-  participantId: Id<"participants">;
+  participantToken: string;
   question: string;
 }) {
   const activeRound = useQuery(api.votingRounds.getActive, { sessionId });
@@ -21,8 +21,8 @@ export function DotVotingMobile({
   const clusters = useQuery(api.clusters.bySession, { sessionId });
   const voteStatus = useQuery(
     api.votes.participantVoteStatus,
-    activeRound && participantId
-      ? { roundId: activeRound._id, participantId }
+    activeRound && participantToken
+      ? { roundId: activeRound._id, sessionId, participantToken }
       : "skip"
   );
 
@@ -121,7 +121,7 @@ export function DotVotingMobile({
       await submitDotVotes({
         roundId: activeRound._id,
         sessionId,
-        participantId,
+        participantToken,
         votes: Object.entries(allocations)
           .filter(([, pts]) => pts > 0)
           .map(([postItId, points]) => ({

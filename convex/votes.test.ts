@@ -4,6 +4,9 @@ import schema from "./schema";
 import { api } from "./_generated/api";
 const modules = import.meta.glob("./**/*.*s");
 
+const PARTICIPANT_TOKEN_1 = "participant-tok-1";
+const PARTICIPANT_TOKEN_2 = "participant-tok-2";
+
 async function setupVotingContext(t: ReturnType<typeof convexTest>) {
   const userId = await t.run(async (ctx) => ctx.db.insert("users", {}));
   const asUser = t.withIdentity({ subject: userId });
@@ -33,9 +36,9 @@ async function setupVotingContext(t: ReturnType<typeof convexTest>) {
   });
 
   // Create participant
-  const participantId = await t.mutation(api.participants.join, {
+  await t.mutation(api.participants.join, {
     sessionId,
-    displayToken: "participant-tok-1",
+    displayToken: PARTICIPANT_TOKEN_1,
   });
 
   return {
@@ -45,20 +48,20 @@ async function setupVotingContext(t: ReturnType<typeof convexTest>) {
     roundId,
     postIt1,
     postIt2,
-    participantId,
+    participantToken: PARTICIPANT_TOKEN_1,
   };
 }
 
 describe("dot voting", () => {
   test("submit creates vote records with numeric value", async () => {
     const t = convexTest(schema, modules);
-    const { roundId, sessionId, participantId, postIt1, postIt2 } =
+    const { roundId, sessionId, participantToken, postIt1, postIt2 } =
       await setupVotingContext(t);
 
     await t.mutation(api.votes.submitDotVotes, {
       roundId,
       sessionId,
-      participantId,
+      participantToken,
       votes: [
         { postItId: postIt1, points: 3 },
         { postItId: postIt2, points: 2 },
@@ -67,7 +70,8 @@ describe("dot voting", () => {
 
     const status = await t.query(api.votes.participantVoteStatus, {
       roundId,
-      participantId,
+      sessionId,
+      participantToken,
     });
     expect(status.hasVoted).toBe(true);
     expect(status.votes).toHaveLength(2);
@@ -75,13 +79,13 @@ describe("dot voting", () => {
 
   test("aggregate returns totals sorted descending", async () => {
     const t = convexTest(schema, modules);
-    const { roundId, sessionId, participantId, postIt1, postIt2 } =
+    const { roundId, sessionId, participantToken, postIt1, postIt2 } =
       await setupVotingContext(t);
 
     await t.mutation(api.votes.submitDotVotes, {
       roundId,
       sessionId,
-      participantId,
+      participantToken,
       votes: [
         { postItId: postIt1, points: 2 },
         { postItId: postIt2, points: 5 },
@@ -98,13 +102,13 @@ describe("dot voting", () => {
 
   test("zero-point votes are not inserted", async () => {
     const t = convexTest(schema, modules);
-    const { roundId, sessionId, participantId, postIt1, postIt2 } =
+    const { roundId, sessionId, participantToken, postIt1, postIt2 } =
       await setupVotingContext(t);
 
     await t.mutation(api.votes.submitDotVotes, {
       roundId,
       sessionId,
-      participantId,
+      participantToken,
       votes: [
         { postItId: postIt1, points: 3 },
         { postItId: postIt2, points: 0 },
@@ -118,14 +122,14 @@ describe("dot voting", () => {
 
   test("re-submit replaces previous votes", async () => {
     const t = convexTest(schema, modules);
-    const { roundId, sessionId, participantId, postIt1, postIt2 } =
+    const { roundId, sessionId, participantToken, postIt1, postIt2 } =
       await setupVotingContext(t);
 
     // First submission
     await t.mutation(api.votes.submitDotVotes, {
       roundId,
       sessionId,
-      participantId,
+      participantToken,
       votes: [{ postItId: postIt1, points: 5 }],
     });
 
@@ -133,7 +137,7 @@ describe("dot voting", () => {
     await t.mutation(api.votes.submitDotVotes, {
       roundId,
       sessionId,
-      participantId,
+      participantToken,
       votes: [{ postItId: postIt2, points: 4 }],
     });
 
@@ -141,6 +145,43 @@ describe("dot voting", () => {
     expect(results).toHaveLength(1);
     expect(results[0].postItId).toBe(postIt2 as string);
     expect(results[0].total).toBe(4);
+  });
+
+  test("invalid token throws", async () => {
+    const t = convexTest(schema, modules);
+    const { roundId, sessionId, postIt1 } = await setupVotingContext(t);
+
+    await expect(
+      t.mutation(api.votes.submitDotVotes, {
+        roundId,
+        sessionId,
+        participantToken: "nonexistent-token",
+        votes: [{ postItId: postIt1, points: 3 }],
+      })
+    ).rejects.toThrow("Participant not found or not in this session");
+  });
+
+  test("wrong-session token throws", async () => {
+    const t = convexTest(schema, modules);
+    const ctx = await setupVotingContext(t);
+
+    // Create another session with a participant
+    const otherSessionId = await ctx.asUser.mutation(api.sessions.create, {
+      question: "Other",
+    });
+    await t.mutation(api.participants.join, {
+      sessionId: otherSessionId,
+      displayToken: "other-session-tok",
+    });
+
+    await expect(
+      t.mutation(api.votes.submitDotVotes, {
+        roundId: ctx.roundId,
+        sessionId: ctx.sessionId,
+        participantToken: "other-session-tok",
+        votes: [{ postItId: ctx.postIt1, points: 3 }],
+      })
+    ).rejects.toThrow("Participant not found or not in this session");
   });
 });
 
@@ -159,7 +200,7 @@ describe("stock rank voting", () => {
     await t.mutation(api.votes.submitStockRankVotes, {
       roundId: stockRoundId,
       sessionId: ctx.sessionId,
-      participantId: ctx.participantId,
+      participantToken: ctx.participantToken,
       rankings: [
         { postItId: ctx.postIt1, rank: 1 },
         { postItId: ctx.postIt2, rank: 2 },
@@ -168,7 +209,8 @@ describe("stock rank voting", () => {
 
     const status = await t.query(api.votes.participantVoteStatus, {
       roundId: stockRoundId,
-      participantId: ctx.participantId,
+      sessionId: ctx.sessionId,
+      participantToken: ctx.participantToken,
     });
     expect(status.hasVoted).toBe(true);
     expect(status.votes).toHaveLength(2);
@@ -188,7 +230,7 @@ describe("stock rank voting", () => {
     await t.mutation(api.votes.submitStockRankVotes, {
       roundId: stockRoundId,
       sessionId: ctx.sessionId,
-      participantId: ctx.participantId,
+      participantToken: ctx.participantToken,
       rankings: [
         { postItId: ctx.postIt1, rank: 1 },
         { postItId: ctx.postIt2, rank: 2 },
@@ -196,14 +238,14 @@ describe("stock rank voting", () => {
     });
 
     // Participant 2
-    const p2 = await t.mutation(api.participants.join, {
+    await t.mutation(api.participants.join, {
       sessionId: ctx.sessionId,
-      displayToken: "participant-tok-2",
+      displayToken: PARTICIPANT_TOKEN_2,
     });
     await t.mutation(api.votes.submitStockRankVotes, {
       roundId: stockRoundId,
       sessionId: ctx.sessionId,
-      participantId: p2,
+      participantToken: PARTICIPANT_TOKEN_2,
       rankings: [
         { postItId: ctx.postIt1, rank: 2 },
         { postItId: ctx.postIt2, rank: 1 },
@@ -232,7 +274,7 @@ describe("stock rank voting", () => {
     await t.mutation(api.votes.submitStockRankVotes, {
       roundId: stockRoundId,
       sessionId: ctx.sessionId,
-      participantId: ctx.participantId,
+      participantToken: ctx.participantToken,
       rankings: [{ postItId: ctx.postIt1, rank: 1 }],
     });
 
@@ -240,7 +282,7 @@ describe("stock rank voting", () => {
     await t.mutation(api.votes.submitStockRankVotes, {
       roundId: stockRoundId,
       sessionId: ctx.sessionId,
-      participantId: ctx.participantId,
+      participantToken: ctx.participantToken,
       rankings: [{ postItId: ctx.postIt2, rank: 1 }],
     });
 
@@ -266,7 +308,7 @@ describe("matrix voting", () => {
     await t.mutation(api.votes.submitMatrixVotes, {
       roundId: matrixRoundId,
       sessionId: ctx.sessionId,
-      participantId: ctx.participantId,
+      participantToken: ctx.participantToken,
       ratings: [
         { postItId: ctx.postIt1, x: 4, y: 2 },
         { postItId: ctx.postIt2, x: 1, y: 5 },
@@ -275,7 +317,8 @@ describe("matrix voting", () => {
 
     const status = await t.query(api.votes.participantVoteStatus, {
       roundId: matrixRoundId,
-      participantId: ctx.participantId,
+      sessionId: ctx.sessionId,
+      participantToken: ctx.participantToken,
     });
     expect(status.hasVoted).toBe(true);
     expect(status.votes).toHaveLength(2);
@@ -295,7 +338,7 @@ describe("matrix voting", () => {
     await t.mutation(api.votes.submitMatrixVotes, {
       roundId: matrixRoundId,
       sessionId: ctx.sessionId,
-      participantId: ctx.participantId,
+      participantToken: ctx.participantToken,
       ratings: [
         { postItId: ctx.postIt1, x: 4, y: 2 },
         { postItId: ctx.postIt2, x: 2, y: 4 },
@@ -303,14 +346,14 @@ describe("matrix voting", () => {
     });
 
     // Participant 2
-    const p2 = await t.mutation(api.participants.join, {
+    await t.mutation(api.participants.join, {
       sessionId: ctx.sessionId,
-      displayToken: "participant-tok-2",
+      displayToken: PARTICIPANT_TOKEN_2,
     });
     await t.mutation(api.votes.submitMatrixVotes, {
       roundId: matrixRoundId,
       sessionId: ctx.sessionId,
-      participantId: p2,
+      participantToken: PARTICIPANT_TOKEN_2,
       ratings: [{ postItId: ctx.postIt1, x: 2, y: 4 }],
     });
 
@@ -339,7 +382,7 @@ describe("matrix voting", () => {
     await t.mutation(api.votes.submitMatrixVotes, {
       roundId: matrixRoundId,
       sessionId: ctx.sessionId,
-      participantId: ctx.participantId,
+      participantToken: ctx.participantToken,
       ratings: [{ postItId: ctx.postIt1, x: 1, y: 1 }],
     });
 
@@ -347,7 +390,7 @@ describe("matrix voting", () => {
     await t.mutation(api.votes.submitMatrixVotes, {
       roundId: matrixRoundId,
       sessionId: ctx.sessionId,
-      participantId: ctx.participantId,
+      participantToken: ctx.participantToken,
       ratings: [{ postItId: ctx.postIt2, x: 5, y: 5 }],
     });
 
@@ -367,14 +410,14 @@ describe("votingProgress", () => {
     // Add a second participant
     await t.mutation(api.participants.join, {
       sessionId: ctx.sessionId,
-      displayToken: "participant-tok-2",
+      displayToken: PARTICIPANT_TOKEN_2,
     });
 
     // Only participant 1 votes
     await t.mutation(api.votes.submitDotVotes, {
       roundId: ctx.roundId,
       sessionId: ctx.sessionId,
-      participantId: ctx.participantId,
+      participantToken: ctx.participantToken,
       votes: [
         { postItId: ctx.postIt1, points: 3 },
         { postItId: ctx.postIt2, points: 2 },
@@ -397,7 +440,8 @@ describe("participantVoteStatus", () => {
 
     const status = await t.query(api.votes.participantVoteStatus, {
       roundId: ctx.roundId,
-      participantId: ctx.participantId,
+      sessionId: ctx.sessionId,
+      participantToken: ctx.participantToken,
     });
     expect(status.hasVoted).toBe(false);
     expect(status.votes).toHaveLength(0);
@@ -410,13 +454,14 @@ describe("participantVoteStatus", () => {
     await t.mutation(api.votes.submitDotVotes, {
       roundId: ctx.roundId,
       sessionId: ctx.sessionId,
-      participantId: ctx.participantId,
+      participantToken: ctx.participantToken,
       votes: [{ postItId: ctx.postIt1, points: 5 }],
     });
 
     const status = await t.query(api.votes.participantVoteStatus, {
       roundId: ctx.roundId,
-      participantId: ctx.participantId,
+      sessionId: ctx.sessionId,
+      participantToken: ctx.participantToken,
     });
     expect(status.hasVoted).toBe(true);
     expect(status.votes).toHaveLength(1);

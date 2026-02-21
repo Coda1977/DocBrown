@@ -1,11 +1,12 @@
 import { v } from "convex/values";
 import { query, mutation } from "./_generated/server";
+import { resolveParticipant } from "./lib/resolveParticipant";
 
 export const submitDotVotes = mutation({
   args: {
     roundId: v.id("votingRounds"),
     sessionId: v.id("sessions"),
-    participantId: v.id("participants"),
+    participantToken: v.string(),
     votes: v.array(
       v.object({
         postItId: v.id("postIts"),
@@ -14,11 +15,16 @@ export const submitDotVotes = mutation({
     ),
   },
   handler: async (ctx, args) => {
+    const participant = await resolveParticipant(ctx, {
+      participantToken: args.participantToken,
+      sessionId: args.sessionId,
+    });
+
     // Delete existing votes for this participant in this round
     const existing = await ctx.db
       .query("votes")
       .withIndex("by_participant_round", (q) =>
-        q.eq("participantId", args.participantId).eq("roundId", args.roundId)
+        q.eq("participantId", participant._id).eq("roundId", args.roundId)
       )
       .collect();
     for (const vote of existing) {
@@ -31,7 +37,7 @@ export const submitDotVotes = mutation({
         await ctx.db.insert("votes", {
           roundId: args.roundId,
           sessionId: args.sessionId,
-          participantId: args.participantId,
+          participantId: participant._id,
           postItId: vote.postItId,
           value: vote.points,
         });
@@ -69,13 +75,19 @@ export const aggregateDotVotes = query({
 export const participantVoteStatus = query({
   args: {
     roundId: v.id("votingRounds"),
-    participantId: v.id("participants"),
+    sessionId: v.id("sessions"),
+    participantToken: v.string(),
   },
   handler: async (ctx, args) => {
+    const participant = await resolveParticipant(ctx, {
+      participantToken: args.participantToken,
+      sessionId: args.sessionId,
+    });
+
     const votes = await ctx.db
       .query("votes")
       .withIndex("by_participant_round", (q) =>
-        q.eq("participantId", args.participantId).eq("roundId", args.roundId)
+        q.eq("participantId", participant._id).eq("roundId", args.roundId)
       )
       .collect();
     return { hasVoted: votes.length > 0, votes };
@@ -86,7 +98,7 @@ export const submitStockRankVotes = mutation({
   args: {
     roundId: v.id("votingRounds"),
     sessionId: v.id("sessions"),
-    participantId: v.id("participants"),
+    participantToken: v.string(),
     rankings: v.array(
       v.object({
         postItId: v.id("postIts"),
@@ -95,11 +107,16 @@ export const submitStockRankVotes = mutation({
     ),
   },
   handler: async (ctx, args) => {
+    const participant = await resolveParticipant(ctx, {
+      participantToken: args.participantToken,
+      sessionId: args.sessionId,
+    });
+
     // Delete existing votes
     const existing = await ctx.db
       .query("votes")
       .withIndex("by_participant_round", (q) =>
-        q.eq("participantId", args.participantId).eq("roundId", args.roundId)
+        q.eq("participantId", participant._id).eq("roundId", args.roundId)
       )
       .collect();
     for (const vote of existing) {
@@ -111,7 +128,7 @@ export const submitStockRankVotes = mutation({
       await ctx.db.insert("votes", {
         roundId: args.roundId,
         sessionId: args.sessionId,
-        participantId: args.participantId,
+        participantId: participant._id,
         postItId: ranking.postItId,
         value: { rank: ranking.rank },
       });
@@ -150,7 +167,7 @@ export const submitMatrixVotes = mutation({
   args: {
     roundId: v.id("votingRounds"),
     sessionId: v.id("sessions"),
-    participantId: v.id("participants"),
+    participantToken: v.string(),
     ratings: v.array(
       v.object({
         postItId: v.id("postIts"),
@@ -160,11 +177,16 @@ export const submitMatrixVotes = mutation({
     ),
   },
   handler: async (ctx, args) => {
+    const participant = await resolveParticipant(ctx, {
+      participantToken: args.participantToken,
+      sessionId: args.sessionId,
+    });
+
     // Delete existing votes
     const existing = await ctx.db
       .query("votes")
       .withIndex("by_participant_round", (q) =>
-        q.eq("participantId", args.participantId).eq("roundId", args.roundId)
+        q.eq("participantId", participant._id).eq("roundId", args.roundId)
       )
       .collect();
     for (const vote of existing) {
@@ -176,7 +198,7 @@ export const submitMatrixVotes = mutation({
       await ctx.db.insert("votes", {
         roundId: args.roundId,
         sessionId: args.sessionId,
-        participantId: args.participantId,
+        participantId: participant._id,
         postItId: rating.postItId,
         value: { x: rating.x, y: rating.y },
       });

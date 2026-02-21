@@ -251,7 +251,7 @@ describe("postIts auth", () => {
     const id = await t.mutation(api.postIts.create, {
       sessionId,
       text: "Participant note",
-      participantId,
+      participantToken: "token-abc",
     });
     const postIt = await t.run(async (ctx) => ctx.db.get(id));
     expect(postIt!.text).toBe("Participant note");
@@ -265,7 +265,7 @@ describe("postIts auth", () => {
     // Advance to organize phase
     await asUser.mutation(api.sessions.advancePhase, { sessionId });
 
-    const participantId = await t.run(async (ctx) =>
+    await t.run(async (ctx) =>
       ctx.db.insert("participants", {
         sessionId,
         displayToken: "token-xyz",
@@ -277,7 +277,7 @@ describe("postIts auth", () => {
       t.mutation(api.postIts.create, {
         sessionId,
         text: "Late note",
-        participantId,
+        participantToken: "token-xyz",
       })
     ).rejects.toThrow("Session is not in collect phase");
   });
@@ -292,7 +292,7 @@ describe("postIts auth", () => {
     });
 
     // Create participant in the other session
-    const participantId = await t.run(async (ctx) =>
+    await t.run(async (ctx) =>
       ctx.db.insert("participants", {
         sessionId: otherSessionId,
         displayToken: "token-other",
@@ -300,14 +300,14 @@ describe("postIts auth", () => {
       })
     );
 
-    // Try to create post-it in first session with other session's participant
+    // Try to create post-it in first session with other session's participant token
     await expect(
       t.mutation(api.postIts.create, {
         sessionId,
         text: "Cross-session",
-        participantId,
+        participantToken: "token-other",
       })
-    ).rejects.toThrow("Not authorized");
+    ).rejects.toThrow("Participant not found or not in this session");
   });
 
   test("co-admin can updateText with coAdminToken", async () => {

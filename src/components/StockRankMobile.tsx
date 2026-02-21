@@ -9,11 +9,11 @@ import { ArrowUpDown, Plus, X, GripVertical } from "lucide-react";
 
 export function StockRankMobile({
   sessionId,
-  participantId,
+  participantToken,
   question,
 }: {
   sessionId: Id<"sessions">;
-  participantId: Id<"participants">;
+  participantToken: string;
   question: string;
 }) {
   const activeRound = useQuery(api.votingRounds.getActive, { sessionId });
@@ -21,8 +21,8 @@ export function StockRankMobile({
   const clusters = useQuery(api.clusters.bySession, { sessionId });
   const voteStatus = useQuery(
     api.votes.participantVoteStatus,
-    activeRound && participantId
-      ? { roundId: activeRound._id, participantId }
+    activeRound && participantToken
+      ? { roundId: activeRound._id, sessionId, participantToken }
       : "skip"
   );
 
@@ -113,7 +113,7 @@ export function StockRankMobile({
       await submitVotes({
         roundId: activeRound._id,
         sessionId,
-        participantId,
+        participantToken,
         rankings: ranked.map((id, idx) => ({
           postItId: id,
           rank: idx + 1,

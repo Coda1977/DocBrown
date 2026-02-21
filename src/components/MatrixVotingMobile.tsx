@@ -9,11 +9,11 @@ import { Grid2x2 } from "lucide-react";
 
 export function MatrixVotingMobile({
   sessionId,
-  participantId,
+  participantToken,
   question,
 }: {
   sessionId: Id<"sessions">;
-  participantId: Id<"participants">;
+  participantToken: string;
   question: string;
 }) {
   const activeRound = useQuery(api.votingRounds.getActive, { sessionId });
@@ -21,8 +21,8 @@ export function MatrixVotingMobile({
   const clusters = useQuery(api.clusters.bySession, { sessionId });
   const voteStatus = useQuery(
     api.votes.participantVoteStatus,
-    activeRound && participantId
-      ? { roundId: activeRound._id, participantId }
+    activeRound && participantToken
+      ? { roundId: activeRound._id, sessionId, participantToken }
       : "skip"
   );
 
@@ -130,7 +130,7 @@ export function MatrixVotingMobile({
       await submitVotes({
         roundId: activeRound._id,
         sessionId,
-        participantId,
+        participantToken,
         ratings: Object.entries(ratings).map(([postItId, { x, y }]) => ({
           postItId: postItId as Id<"postIts">,
           x,

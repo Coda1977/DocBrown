@@ -1,6 +1,8 @@
 import { v } from "convex/values";
 import { query, mutation } from "./_generated/server";
+import type { Id } from "./_generated/dataModel";
 import { getAuthorizedSession } from "./lib/authSession";
+import { resolveParticipant } from "./lib/resolveParticipant";
 
 const POST_IT_COLORS = [
   "#fef9c3", // yellow
@@ -29,19 +31,22 @@ export const create = mutation({
   args: {
     sessionId: v.id("sessions"),
     text: v.string(),
-    participantId: v.optional(v.id("participants")),
+    participantToken: v.optional(v.string()),
     coAdminToken: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const session = await ctx.db.get(args.sessionId);
     if (!session) throw new Error("Session not found");
 
-    if (args.participantId) {
-      // Participant path: verify participant belongs to this session and session is in collect phase
-      const participant = await ctx.db.get(args.participantId);
-      if (!participant || participant.sessionId !== args.sessionId) {
-        throw new Error("Not authorized");
-      }
+    let resolvedParticipantId: Id<"participants"> | undefined;
+
+    if (args.participantToken) {
+      // Participant path: resolve token server-side, verify session membership
+      const participant = await resolveParticipant(ctx, {
+        participantToken: args.participantToken,
+        sessionId: args.sessionId,
+      });
+      resolvedParticipantId = participant._id;
       if (session.phase !== "collect") {
         throw new Error("Session is not in collect phase");
       }
@@ -71,7 +76,7 @@ export const create = mutation({
 
     return await ctx.db.insert("postIts", {
       sessionId: args.sessionId,
-      participantId: args.participantId,
+      participantId: resolvedParticipantId,
       text: args.text,
       positionX,
       positionY,

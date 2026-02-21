@@ -3,7 +3,6 @@
 import { use, useState, useEffect, useCallback } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
-import type { Id } from "../../../../convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
 import { VotingRouter } from "@/components/VotingRouter";
 import { TimerDisplay } from "@/components/TimerDisplay";
@@ -20,8 +19,8 @@ function getOrCreateToken(code: string): string {
   const stored =
     typeof sessionStorage !== "undefined" ? sessionStorage.getItem(key) : null;
   if (stored) return stored;
-  // Generate new
-  const token = `p_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+  // Generate new (crypto.randomUUID for ~122 bits of entropy)
+  const token = `p_${crypto.randomUUID()}`;
   // Store in cookie (24h) and sessionStorage
   if (typeof document !== "undefined") {
     document.cookie = `${key}=${token}; max-age=86400; path=/; SameSite=Lax`;
@@ -39,15 +38,19 @@ export default function JoinPage({
 }) {
   const { code } = use(params);
   const session = useQuery(api.sessions.getByShortCode, { shortCode: code });
-  const [participantId, setParticipantId] = useState<Id<"participants"> | null>(
-    null
-  );
   const [token, setToken] = useState<string | null>(null);
   const [text, setText] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [joinFired, setJoinFired] = useState(false);
 
   const joinSession = useMutation(api.participants.join);
   const createPostIt = useMutation(api.postIts.create);
+
+  // Reactively resolve participant from token (replaces participantId state)
+  const participant = useQuery(
+    api.participants.reconnect,
+    session && token ? { displayToken: token, sessionId: session._id } : "skip"
+  );
 
   const postIts = useQuery(
     api.postIts.bySession,
@@ -67,29 +70,30 @@ export default function JoinPage({
     setToken(getOrCreateToken(code));
   }, [code]);
 
-  // Join the session
+  // Join the session (fire-and-forget — reconnect query will reactively pick up the result)
   useEffect(() => {
-    if (!session || !token || participantId) return;
+    if (!session || !token || joinFired) return;
+    setJoinFired(true);
     joinSession({
       sessionId: session._id,
       displayToken: token,
-    }).then(setParticipantId);
-  }, [session, token, participantId, joinSession]);
+    });
+  }, [session, token, joinFired, joinSession]);
 
   const handleSubmit = useCallback(async () => {
-    if (!text.trim() || !session || !participantId) return;
+    if (!text.trim() || !session || !token) return;
     setSubmitting(true);
     try {
       await createPostIt({
         sessionId: session._id,
         text: text.trim(),
-        participantId,
+        participantToken: token,
       });
       setText("");
     } finally {
       setSubmitting(false);
     }
-  }, [text, session, participantId, createPostIt]);
+  }, [text, session, token, createPostIt]);
 
   // Session not found
   if (session === null) {
@@ -106,7 +110,7 @@ export default function JoinPage({
   }
 
   // Loading
-  if (!session || !participantId) {
+  if (!session || !participant) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <p className="text-muted-foreground">Joining session...</p>
@@ -136,7 +140,7 @@ export default function JoinPage({
     return (
       <VotingRouter
         sessionId={session._id}
-        participantId={participantId}
+        participantToken={token!}
         question={session.question}
       />
     );
@@ -179,7 +183,7 @@ export default function JoinPage({
 
   // Collect phase - main participant view
   const myPostIts = postIts?.filter(
-    (p) => p.participantId === participantId
+    (p) => p.participantId === participant?._id
   );
   const allPostIts = session.participantVisibility ? postIts : myPostIts;
 
@@ -244,7 +248,7 @@ export default function JoinPage({
               style={{ backgroundColor: postIt.color ?? "#fef9c3" }}
             >
               {postIt.text}
-              {postIt.participantId === participantId && (
+              {postIt.participantId === participant?._id && (
                 <span className="text-[10px] text-muted-foreground ml-2">
                   (you)
                 </span>
