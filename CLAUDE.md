@@ -30,8 +30,9 @@ convex/
   votes.ts           # submitDotVotes, submitStockRankVotes, submitMatrixVotes, aggregate queries, votingProgress
   folders.ts         # Folder CRUD: list, create, update, remove (cascade unassign)
   coAdmins.ts        # Co-admin CRUD: getBySession, getByToken, createInvite, join, revoke
-  lib/shortCode.ts   # 6-char code generator (no ambiguous chars)
-  lib/authSession.ts # Shared auth helper: getAuthorizedSession (owner OR co-admin token)
+  lib/shortCode.ts        # 6-char code generator (no ambiguous chars)
+  lib/authSession.ts      # Shared auth helper: getAuthorizedSession (owner OR co-admin token)
+  lib/resolveParticipant.ts # Shared helper: resolveParticipant (token -> participant doc, validates session)
 
 src/app/
   page.tsx                           # Landing page
@@ -158,9 +159,10 @@ src/lib/
 
 ### Security Hardening [DONE]
 - **Co-admin permission scoping**: `votingRounds.create` and `votingRounds.reveal` are now owner-only (use `getAuthUserId` + ownership check, no `coAdminToken`). Visibility toggle removed from co-admin UI.
-- **Post-it mutation auth**: All 5 write mutations (`create`, `updateText`, `move`, `setCluster`, `remove`) now require auth. `create` has two paths: participant (validates session membership + collect phase) or admin (`getAuthorizedSession`). Other mutations look up the post-it's session and verify via `getAuthorizedSession`.
+- **Post-it mutation auth**: All 5 write mutations (`create`, `updateText`, `move`, `setCluster`, `remove`) now require auth. `create` has two paths: participant (validates token + collect phase) or admin (`getAuthorizedSession`). Other mutations look up the post-it's session and verify via `getAuthorizedSession`.
+- **Participant token auth**: Client sends `participantToken` (the displayToken string) instead of `participantId`. Server resolves via `resolveParticipant()` helper using `by_token` index + session membership check. Voting mutations (`submitDotVotes`, `submitStockRankVotes`, `submitMatrixVotes`, `participantVoteStatus`) all validate participant identity server-side. Token entropy upgraded to `crypto.randomUUID()` (~122 bits).
 - Co-admin page threads `coAdminToken` into all post-it mutation calls.
-- 160 tests passing across 17 test files (including new auth rejection + permission scoping tests).
+- 165 tests passing across 18 test files (including auth rejection, permission scoping, and participant token security tests).
 
 ## What's Left
 
@@ -200,8 +202,9 @@ npm run lint      # ESLint
 ## Conventions
 
 - Most Convex admin functions use `getAuthorizedSession()` which checks owner OR co-admin token; voting round create/reveal are owner-only via `getAuthUserId`
-- All postIt write mutations require auth (owner/co-admin via `getAuthorizedSession`, or participant via `participantId` validation)
-- Participants are anonymous (cookie-based token, no account)
+- All postIt write mutations require auth (owner/co-admin via `getAuthorizedSession`, or participant via `participantToken` resolved server-side by `resolveParticipant()`)
+- All voting submit mutations + `participantVoteStatus` require `participantToken` (resolved server-side, never trust `participantId` from client)
+- Participants are anonymous (cookie-based token via `crypto.randomUUID()`, no account)
 - Post-it colors randomly assigned from 6-color FigJam palette
 - Short codes: 6 chars from `ABCDEFGHJKMNPQRSTUVWXYZ23456789` (no ambiguous chars)
 - Phase order: collect -> organize -> vote -> results (forward and backward transitions supported)
