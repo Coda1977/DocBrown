@@ -61,7 +61,7 @@ describe("votingRounds", () => {
     expect(round!.isRevealed).toBe(false);
   });
 
-  test("create requires auth (owner or co-admin)", async () => {
+  test("create requires owner auth (unauthenticated rejected)", async () => {
     const t = convexTest(schema, modules);
     const { sessionId } = await setupSession(t);
 
@@ -72,7 +72,37 @@ describe("votingRounds", () => {
         mode: "dot_voting",
         config: {},
       })
+    ).rejects.toThrow("Not authenticated");
+  });
+
+  test("create rejects co-admin (owner-only)", async () => {
+    const t = convexTest(schema, modules);
+    const { sessionId } = await setupSession(t);
+
+    // Create a co-admin
+    const coAdminId = await t.run(async (ctx) =>
+      ctx.db.insert("coAdmins", {
+        sessionId,
+        displayName: "Co-Admin",
+        inviteToken: "coadmin-token-123",
+        isActive: true,
+        joinedAt: Date.now(),
+      })
+    );
+
+    // Co-admin cannot create voting round (not authenticated as owner)
+    const otherUserId = await t.run(async (ctx) => ctx.db.insert("users", {}));
+    const asOtherUser = t.withIdentity({ subject: otherUserId });
+    await expect(
+      asOtherUser.mutation(api.votingRounds.create, {
+        sessionId,
+        mode: "dot_voting",
+        config: {},
+      })
     ).rejects.toThrow("Not authorized");
+
+    // Clean up
+    await t.run(async (ctx) => ctx.db.delete(coAdminId));
   });
 
   test("getActive returns the most recently created round", async () => {
@@ -138,7 +168,7 @@ describe("votingRounds", () => {
     expect(round!.isRevealed).toBe(true);
   });
 
-  test("reveal requires auth (owner or co-admin)", async () => {
+  test("reveal requires owner auth (unauthenticated rejected)", async () => {
     const t = convexTest(schema, modules);
     const { asUser, sessionId } = await setupSession(t);
 
@@ -151,6 +181,23 @@ describe("votingRounds", () => {
     // Unauthenticated reveal
     await expect(
       t.mutation(api.votingRounds.reveal, { roundId })
+    ).rejects.toThrow("Not authenticated");
+  });
+
+  test("reveal rejects non-owner user", async () => {
+    const t = convexTest(schema, modules);
+    const { asUser, sessionId } = await setupSession(t);
+
+    const roundId = await asUser.mutation(api.votingRounds.create, {
+      sessionId,
+      mode: "dot_voting",
+      config: {},
+    });
+
+    const otherUserId = await t.run(async (ctx) => ctx.db.insert("users", {}));
+    const asOtherUser = t.withIdentity({ subject: otherUserId });
+    await expect(
+      asOtherUser.mutation(api.votingRounds.reveal, { roundId })
     ).rejects.toThrow("Not authorized");
   });
 });

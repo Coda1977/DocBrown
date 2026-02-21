@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { query, mutation } from "./_generated/server";
+import { getAuthorizedSession } from "./lib/authSession";
 
 const POST_IT_COLORS = [
   "#fef9c3", // yellow
@@ -29,10 +30,28 @@ export const create = mutation({
     sessionId: v.id("sessions"),
     text: v.string(),
     participantId: v.optional(v.id("participants")),
+    coAdminToken: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const session = await ctx.db.get(args.sessionId);
     if (!session) throw new Error("Session not found");
+
+    if (args.participantId) {
+      // Participant path: verify participant belongs to this session and session is in collect phase
+      const participant = await ctx.db.get(args.participantId);
+      if (!participant || participant.sessionId !== args.sessionId) {
+        throw new Error("Not authorized");
+      }
+      if (session.phase !== "collect") {
+        throw new Error("Session is not in collect phase");
+      }
+    } else {
+      // Admin path: owner or co-admin
+      await getAuthorizedSession(ctx, {
+        sessionId: args.sessionId,
+        coAdminToken: args.coAdminToken,
+      });
+    }
 
     // Auto-layout: count existing post-its to compute grid position
     const existing = await ctx.db
@@ -66,8 +85,15 @@ export const updateText = mutation({
   args: {
     postItId: v.id("postIts"),
     text: v.string(),
+    coAdminToken: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    const postIt = await ctx.db.get(args.postItId);
+    if (!postIt) throw new Error("Post-it not found");
+    await getAuthorizedSession(ctx, {
+      sessionId: postIt.sessionId,
+      coAdminToken: args.coAdminToken,
+    });
     await ctx.db.patch(args.postItId, { text: args.text });
   },
 });
@@ -77,8 +103,15 @@ export const move = mutation({
     postItId: v.id("postIts"),
     positionX: v.number(),
     positionY: v.number(),
+    coAdminToken: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    const postIt = await ctx.db.get(args.postItId);
+    if (!postIt) throw new Error("Post-it not found");
+    await getAuthorizedSession(ctx, {
+      sessionId: postIt.sessionId,
+      coAdminToken: args.coAdminToken,
+    });
     await ctx.db.patch(args.postItId, {
       positionX: args.positionX,
       positionY: args.positionY,
@@ -90,15 +123,31 @@ export const setCluster = mutation({
   args: {
     postItId: v.id("postIts"),
     clusterId: v.optional(v.id("clusters")),
+    coAdminToken: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    const postIt = await ctx.db.get(args.postItId);
+    if (!postIt) throw new Error("Post-it not found");
+    await getAuthorizedSession(ctx, {
+      sessionId: postIt.sessionId,
+      coAdminToken: args.coAdminToken,
+    });
     await ctx.db.patch(args.postItId, { clusterId: args.clusterId });
   },
 });
 
 export const remove = mutation({
-  args: { postItId: v.id("postIts") },
+  args: {
+    postItId: v.id("postIts"),
+    coAdminToken: v.optional(v.string()),
+  },
   handler: async (ctx, args) => {
+    const postIt = await ctx.db.get(args.postItId);
+    if (!postIt) throw new Error("Post-it not found");
+    await getAuthorizedSession(ctx, {
+      sessionId: postIt.sessionId,
+      coAdminToken: args.coAdminToken,
+    });
     await ctx.db.delete(args.postItId);
   },
 });

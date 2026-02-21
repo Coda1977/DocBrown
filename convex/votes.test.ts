@@ -12,11 +12,11 @@ async function setupVotingContext(t: ReturnType<typeof convexTest>) {
   });
 
   // Create post-its
-  const postIt1 = await t.mutation(api.postIts.create, {
+  const postIt1 = await asUser.mutation(api.postIts.create, {
     sessionId,
     text: "Item A",
   });
-  const postIt2 = await t.mutation(api.postIts.create, {
+  const postIt2 = await asUser.mutation(api.postIts.create, {
     sessionId,
     text: "Item B",
   });

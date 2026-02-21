@@ -15,8 +15,6 @@ import { TimerControls } from "@/components/TimerControls";
 import {
   Users,
   Plus,
-  Eye,
-  EyeOff,
   Shield,
 } from "lucide-react";
 
@@ -148,7 +146,6 @@ function CoAdminSessionView({
 
   const advancePhase = useMutation(api.sessions.advancePhase);
   const revertPhase = useMutation(api.sessions.revertPhase);
-  const updateSession = useMutation(api.sessions.update);
   const createPostIt = useMutation(api.postIts.create);
   const updatePostItText = useMutation(api.postIts.updateText);
   const movePostIt = useMutation(api.postIts.move);
@@ -180,15 +177,15 @@ function CoAdminSessionView({
 
   const handleAddPostIt = useCallback(async () => {
     if (!newPostItText.trim()) return;
-    await createPostIt({ sessionId, text: newPostItText.trim() });
+    await createPostIt({ sessionId, text: newPostItText.trim(), coAdminToken });
     setNewPostItText("");
-  }, [createPostIt, sessionId, newPostItText]);
+  }, [createPostIt, sessionId, newPostItText, coAdminToken]);
 
   const handleMovePostIt = useCallback(
     async (postItId: Id<"postIts">, x: number, y: number) => {
-      await movePostIt({ postItId, positionX: x, positionY: y });
+      await movePostIt({ postItId, positionX: x, positionY: y, coAdminToken });
     },
-    [movePostIt]
+    [movePostIt, coAdminToken]
   );
 
   if (!session) {
@@ -238,22 +235,6 @@ function CoAdminSessionView({
             timerEnabled={session.timerEnabled}
             coAdminToken={coAdminToken}
           />
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() =>
-              updateSession({
-                sessionId,
-                participantVisibility: !session.participantVisibility,
-              })
-            }
-          >
-            {session.participantVisibility ? (
-              <Eye className="h-4 w-4" />
-            ) : (
-              <EyeOff className="h-4 w-4" />
-            )}
-          </Button>
           <div className="flex items-center gap-1 text-sm text-muted-foreground">
             <Users className="h-4 w-4" />
             {participantCount ?? 0}
@@ -308,11 +289,11 @@ function CoAdminSessionView({
                 editingPostIt={editingPostIt}
                 onStartEdit={setEditingPostIt}
                 onSaveEdit={async (id, text) => {
-                  await updatePostItText({ postItId: id, text });
+                  await updatePostItText({ postItId: id, text, coAdminToken });
                   setEditingPostIt(null);
                 }}
                 onDelete={async (id) => {
-                  await removePostIt({ postItId: id });
+                  await removePostIt({ postItId: id, coAdminToken });
                   setEditingPostIt(null);
                 }}
                 onMove={handleMovePostIt}
@@ -326,6 +307,7 @@ function CoAdminSessionView({
                   sessionId={sessionId}
                   activeRound={activeRound ?? null}
                   coAdminToken={coAdminToken}
+                  readOnly
                 />
               ) : activeRound ? (
                 <ResultsPanel
@@ -357,11 +339,11 @@ function CoAdminSessionView({
             editingPostIt={editingPostIt}
             onStartEdit={setEditingPostIt}
             onSaveEdit={async (id, text) => {
-              await updatePostItText({ postItId: id, text });
+              await updatePostItText({ postItId: id, text, coAdminToken });
               setEditingPostIt(null);
             }}
             onDelete={async (id) => {
-              await removePostIt({ postItId: id });
+              await removePostIt({ postItId: id, coAdminToken });
               setEditingPostIt(null);
             }}
             onMove={handleMovePostIt}

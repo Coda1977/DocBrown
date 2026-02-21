@@ -53,10 +53,12 @@ export function VotingConfigPanel({
   sessionId,
   activeRound,
   coAdminToken,
+  readOnly,
 }: {
   sessionId: Id<"sessions">;
   activeRound: ActiveRound | null;
   coAdminToken?: string;
+  readOnly?: boolean;
 }) {
   const createRound = useMutation(api.votingRounds.create);
   const revealResults = useMutation(api.votingRounds.reveal);
@@ -89,7 +91,7 @@ export function VotingConfigPanel({
           config = { xAxisLabel, yAxisLabel };
           break;
       }
-      await createRound({ sessionId, mode: selectedMode, config, coAdminToken });
+      await createRound({ sessionId, mode: selectedMode, config });
     } finally {
       setCreating(false);
     }
@@ -97,6 +99,16 @@ export function VotingConfigPanel({
 
   // Setup view - no active round yet
   if (!activeRound) {
+    if (readOnly) {
+      return (
+        <div className="p-6 text-center">
+          <h3 className="text-lg font-semibold">Voting Setup</h3>
+          <p className="text-sm text-muted-foreground mt-2">
+            Waiting for facilitator to start voting...
+          </p>
+        </div>
+      );
+    }
     return (
       <div className="p-6 space-y-6">
         <div>
@@ -299,44 +311,56 @@ export function VotingConfigPanel({
       )}
 
       {!activeRound.isRevealed ? (
-        <div className="space-y-2">
-          <Button
-            onClick={() => revealResults({ roundId: activeRound._id, coAdminToken })}
-            className="w-full"
-          >
-            Reveal to Participants
-          </Button>
-          <Button
-            variant="outline"
-            onClick={async () => {
-              await revealResults({ roundId: activeRound._id, coAdminToken });
-              await advancePhase({ sessionId, coAdminToken });
-            }}
-            className="w-full"
-          >
-            End Voting
-          </Button>
-        </div>
+        readOnly ? (
+          <p className="text-sm text-muted-foreground">
+            Voting is in progress. Waiting for facilitator to reveal results...
+          </p>
+        ) : (
+          <div className="space-y-2">
+            <Button
+              onClick={() => revealResults({ roundId: activeRound._id })}
+              className="w-full"
+            >
+              Reveal to Participants
+            </Button>
+            <Button
+              variant="outline"
+              onClick={async () => {
+                await revealResults({ roundId: activeRound._id });
+                await advancePhase({ sessionId, coAdminToken });
+              }}
+              className="w-full"
+            >
+              End Voting
+            </Button>
+          </div>
+        )
       ) : !showNewRound ? (
-        <div className="space-y-2">
+        readOnly ? (
           <p className="text-sm text-accent font-medium">
             Results are visible to all
           </p>
-          <Button
-            variant="outline"
-            onClick={() => advancePhase({ sessionId, coAdminToken })}
-            className="w-full"
-          >
-            Go to Results Phase
-          </Button>
-          <Button
-            variant="secondary"
-            onClick={() => setShowNewRound(true)}
-            className="w-full"
-          >
-            Start Another Round
-          </Button>
-        </div>
+        ) : (
+          <div className="space-y-2">
+            <p className="text-sm text-accent font-medium">
+              Results are visible to all
+            </p>
+            <Button
+              variant="outline"
+              onClick={() => advancePhase({ sessionId, coAdminToken })}
+              className="w-full"
+            >
+              Go to Results Phase
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={() => setShowNewRound(true)}
+              className="w-full"
+            >
+              Start Another Round
+            </Button>
+          </div>
+        )
       ) : (
         <NewRoundSetup
           selectedMode={selectedMode}

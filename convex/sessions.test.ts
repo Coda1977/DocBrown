@@ -144,7 +144,7 @@ describe("sessions CRUD", () => {
     const originalId = await asUser.mutation(api.sessions.create, {
       question: "Q",
     });
-    await t.mutation(api.postIts.create, {
+    await asUser.mutation(api.postIts.create, {
       sessionId: originalId,
       text: "Note 1",
     });
@@ -427,7 +427,7 @@ describe("sessions phase transitions", () => {
         joinedAt: Date.now(),
       })
     );
-    const postItId = await t.mutation(api.postIts.create, {
+    const postItId = await asUser.mutation(api.postIts.create, {
       sessionId,
       text: "Note",
     });
@@ -479,8 +479,8 @@ describe("sessions phase transitions", () => {
     const sessionId = await asUser.mutation(api.sessions.create, {
       question: "Q",
     });
-    await t.mutation(api.postIts.create, { sessionId, text: "Note 1" });
-    await t.mutation(api.postIts.create, { sessionId, text: "Note 2" });
+    await asUser.mutation(api.postIts.create, { sessionId, text: "Note 1" });
+    await asUser.mutation(api.postIts.create, { sessionId, text: "Note 2" });
 
     await asUser.mutation(api.sessions.advancePhase, { sessionId });
     await asUser.mutation(api.sessions.advancePhase, { sessionId });

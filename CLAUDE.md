@@ -24,9 +24,9 @@ convex/
   http.ts            # HTTP router for auth routes
   sessions.ts        # CRUD, advancePhase, revertPhase, duplicate, moveToFolder, timer (start/stop/reset)
   participants.ts    # join (cookie-based token), reconnect, bySession
-  postIts.ts         # create (auto-grid + random color), updateText, move, setCluster, remove
+  postIts.ts         # create (auto-grid + random color + auth), updateText, move, setCluster, remove (all auth-checked)
   clusters.ts        # create, update, remove (unassigns post-its)
-  votingRounds.ts    # create, getActive, bySession, reveal (co-admin aware)
+  votingRounds.ts    # create, getActive, bySession, reveal (owner-only for create/reveal)
   votes.ts           # submitDotVotes, submitStockRankVotes, submitMatrixVotes, aggregate queries, votingProgress
   folders.ts         # Folder CRUD: list, create, update, remove (cascade unassign)
   coAdmins.ts        # Co-admin CRUD: getBySession, getByToken, createInvite, join, revoke
@@ -56,7 +56,7 @@ src/components/
   StockRankMobile.tsx  # Mobile stock rank: tap to add, drag to reorder, submit
   MatrixVotingMobile.tsx # Mobile 2x2 matrix: dual sliders per item, submit
   VotingRouter.tsx     # Routes to correct voting component by round mode
-  VotingConfigPanel.tsx # Voting type picker (dot/stock/matrix), mode-specific config, progress, reveal, "Start Another Round"
+  VotingConfigPanel.tsx # Voting type picker (dot/stock/matrix), mode-specific config, progress, reveal, "Start Another Round", readOnly mode for co-admin
   ResultsPanel.tsx     # Multi-mode results with round tabs: bar charts (dot/stock), scatter plot (matrix), ranked lists
   CoAdminInvite.tsx    # Generate/share co-admin invite link, show active status, revoke
   TimerDisplay.tsx     # Countdown MM:SS, color shift teal->coral, pulsing last 10s
@@ -143,16 +143,24 @@ src/lib/
 ### Co-Admin [DONE]
 - `/admin/[token]` route: join form with name input, cookie-based session persistence
 - Shared auth helper `getAuthorizedSession()` checks session owner OR active co-admin token
-- Co-admin gets full facilitator view: phase controls, timer, voting config, post-it management
+- Co-admin gets scoped view: phase controls, timer, post-it management (create/edit/move/delete)
+- Co-admin CANNOT: create/reveal voting rounds, toggle participant visibility, modify session settings
+- VotingConfigPanel `readOnly` mode: co-admin sees voting progress but no setup/reveal/new-round controls
 - `CoAdminInvite` component: generate invite link, copy URL, show active status, revoke access
 - `coAdmins.ts` backend: `getBySession`, `getByToken`, `createInvite`, `join`, `revoke`
-- All admin mutations (advancePhase, revertPhase, timer, voting rounds) accept optional `coAdminToken`
+- Admin mutations (advancePhase, revertPhase, timer, post-its) accept optional `coAdminToken`; voting rounds are owner-only
 
 ### Multiple Voting Rounds [DONE]
 - VotingConfigPanel: after revealing results, "Start Another Round" button shows inline setup for a new round
 - ResultsPanel: round tabs appear when multiple revealed rounds exist, allowing switching between rounds
 - Round tabs shown on facilitator, co-admin, and presentation views
 - Each round tracked with `roundNumber`, different modes allowed per round
+
+### Security Hardening [DONE]
+- **Co-admin permission scoping**: `votingRounds.create` and `votingRounds.reveal` are now owner-only (use `getAuthUserId` + ownership check, no `coAdminToken`). Visibility toggle removed from co-admin UI.
+- **Post-it mutation auth**: All 5 write mutations (`create`, `updateText`, `move`, `setCluster`, `remove`) now require auth. `create` has two paths: participant (validates session membership + collect phase) or admin (`getAuthorizedSession`). Other mutations look up the post-it's session and verify via `getAuthorizedSession`.
+- Co-admin page threads `coAdminToken` into all post-it mutation calls.
+- 160 tests passing across 17 test files (including new auth rejection + permission scoping tests).
 
 ## What's Left
 
@@ -191,7 +199,8 @@ npm run lint      # ESLint
 
 ## Conventions
 
-- All Convex admin functions use `getAuthorizedSession()` which checks owner OR co-admin token
+- Most Convex admin functions use `getAuthorizedSession()` which checks owner OR co-admin token; voting round create/reveal are owner-only via `getAuthUserId`
+- All postIt write mutations require auth (owner/co-admin via `getAuthorizedSession`, or participant via `participantId` validation)
 - Participants are anonymous (cookie-based token, no account)
 - Post-it colors randomly assigned from 6-color FigJam palette
 - Short codes: 6 chars from `ABCDEFGHJKMNPQRSTUVWXYZ23456789` (no ambiguous chars)

@@ -16,7 +16,7 @@ async function setupSession(t: ReturnType<typeof convexTest>) {
 describe("clusters remove cascade", () => {
   test("remove unassigns postIts (sets clusterId=undefined)", async () => {
     const t = convexTest(schema, modules);
-    const { sessionId } = await setupSession(t);
+    const { asUser, sessionId } = await setupSession(t);
 
     const clusterId = await t.mutation(api.clusters.create, {
       sessionId,
@@ -24,11 +24,11 @@ describe("clusters remove cascade", () => {
       positionX: 0,
       positionY: 0,
     });
-    const postItId = await t.mutation(api.postIts.create, {
+    const postItId = await asUser.mutation(api.postIts.create, {
       sessionId,
       text: "Note",
     });
-    await t.mutation(api.postIts.setCluster, { postItId, clusterId });
+    await asUser.mutation(api.postIts.setCluster, { postItId, clusterId });
 
     // Remove cluster
     await t.mutation(api.clusters.remove, { clusterId });
@@ -39,7 +39,7 @@ describe("clusters remove cascade", () => {
 
   test("remove does NOT delete the postIts themselves", async () => {
     const t = convexTest(schema, modules);
-    const { sessionId } = await setupSession(t);
+    const { asUser, sessionId } = await setupSession(t);
 
     const clusterId = await t.mutation(api.clusters.create, {
       sessionId,
@@ -47,11 +47,11 @@ describe("clusters remove cascade", () => {
       positionX: 0,
       positionY: 0,
     });
-    const postItId = await t.mutation(api.postIts.create, {
+    const postItId = await asUser.mutation(api.postIts.create, {
       sessionId,
       text: "Survivor",
     });
-    await t.mutation(api.postIts.setCluster, { postItId, clusterId });
+    await asUser.mutation(api.postIts.setCluster, { postItId, clusterId });
 
     await t.mutation(api.clusters.remove, { clusterId });
 
@@ -62,7 +62,7 @@ describe("clusters remove cascade", () => {
 
   test("postIts in other clusters are unaffected", async () => {
     const t = convexTest(schema, modules);
-    const { sessionId } = await setupSession(t);
+    const { asUser, sessionId } = await setupSession(t);
 
     const cluster1 = await t.mutation(api.clusters.create, {
       sessionId,
@@ -76,19 +76,19 @@ describe("clusters remove cascade", () => {
       positionX: 400,
       positionY: 0,
     });
-    const postIt1 = await t.mutation(api.postIts.create, {
+    const postIt1 = await asUser.mutation(api.postIts.create, {
       sessionId,
       text: "In Group 1",
     });
-    const postIt2 = await t.mutation(api.postIts.create, {
+    const postIt2 = await asUser.mutation(api.postIts.create, {
       sessionId,
       text: "In Group 2",
     });
-    await t.mutation(api.postIts.setCluster, {
+    await asUser.mutation(api.postIts.setCluster, {
       postItId: postIt1,
       clusterId: cluster1,
     });
-    await t.mutation(api.postIts.setCluster, {
+    await asUser.mutation(api.postIts.setCluster, {
       postItId: postIt2,
       clusterId: cluster2,
     });
@@ -103,7 +103,7 @@ describe("clusters remove cascade", () => {
 
   test("orphan postIts (no cluster) are unaffected", async () => {
     const t = convexTest(schema, modules);
-    const { sessionId } = await setupSession(t);
+    const { asUser, sessionId } = await setupSession(t);
 
     const clusterId = await t.mutation(api.clusters.create, {
       sessionId,
@@ -111,7 +111,7 @@ describe("clusters remove cascade", () => {
       positionX: 0,
       positionY: 0,
     });
-    const orphanId = await t.mutation(api.postIts.create, {
+    const orphanId = await asUser.mutation(api.postIts.create, {
       sessionId,
       text: "No cluster",
     });

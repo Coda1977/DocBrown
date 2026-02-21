@@ -1,6 +1,6 @@
 import { v } from "convex/values";
 import { query, mutation } from "./_generated/server";
-import { getAuthorizedSession } from "./lib/authSession";
+import { getAuthUserId } from "@convex-dev/auth/server";
 
 export const bySession = query({
   args: { sessionId: v.id("sessions") },
@@ -33,10 +33,15 @@ export const create = mutation({
       v.literal("matrix_2x2")
     ),
     config: v.any(),
-    coAdminToken: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    await getAuthorizedSession(ctx, args);
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("Not authenticated");
+
+    const session = await ctx.db.get(args.sessionId);
+    if (!session || session.userId !== userId) {
+      throw new Error("Not authorized");
+    }
 
     const existing = await ctx.db
       .query("votingRounds")
@@ -57,15 +62,19 @@ export const create = mutation({
 export const reveal = mutation({
   args: {
     roundId: v.id("votingRounds"),
-    coAdminToken: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("Not authenticated");
+
     const round = await ctx.db.get(args.roundId);
     if (!round) throw new Error("Round not found");
-    await getAuthorizedSession(ctx, {
-      sessionId: round.sessionId,
-      coAdminToken: args.coAdminToken,
-    });
+
+    const session = await ctx.db.get(round.sessionId);
+    if (!session || session.userId !== userId) {
+      throw new Error("Not authorized");
+    }
+
     await ctx.db.patch(args.roundId, { isRevealed: true });
   },
 });
